@@ -969,7 +969,6 @@
 
 <!-- ✅ แสดงคอมเมนต์ -->
 {% if dashboard.dashboard_type == "seeding" %}
-  <!-- 🔷 SEEDING DASHBOARD -->
   {% if seeding_comments or organic_comments %}
  <div class="row">
 
@@ -988,23 +987,23 @@
               {% if comment.sentiment == "Positive" %}bg-success
               {% elif comment.sentiment == "neutral" %}bg-secondary
               {% elif comment.sentiment == "negative" %}bg-danger
-              {% else %}bg-light text-dark{% endif %}">
+              {% else %}bg-light text-dark{% endif %}"
+              style="font-size: 11px; padding: 4px 6px;">
               {{ comment.sentiment }}
             </span>
           {% endif %}
 
           <div class="d-flex align-items-start mb-1">
-  {% if comment.profile_img_url %}
-    <img src="{{ comment.profile_img_url }}" class="rounded-circle me-2" width="36" height="36" alt="avatar">
-  {% endif %}
-  <div style="flex:1;">
-    <div class="fw-semibold text-dark" style="font-size: 14px;">{{ comment.author }}</div>
-    <div class="text-muted" style="font-size: 13px; white-space: normal; word-break: break-word; padding-right: 60px;">
-      {{ comment.content }}
-    </div>
-  </div>
-</div>
-
+            {% if comment.profile_img_url %}
+              <img src="{{ comment.profile_img_url }}" class="rounded-circle me-2" width="36" height="36" alt="avatar">
+            {% endif %}
+            <div style="flex:1;">
+              <div class="fw-semibold text-dark" style="font-size: 14px;">{{ comment.author }}</div>
+              <div class="text-muted" style="font-size: 13px; white-space: normal; word-break: break-word; padding-right: 60px;">
+                {{ comment.content }}
+              </div>
+            </div>
+          </div>
 
           {% if comment.image_url %}
             <img src="{{ comment.image_url }}" class="rounded mb-2" style="max-width: 100%; border-radius: 6px;" alt="comment image">
@@ -1016,11 +1015,11 @@
             </div>
           {% endif %}
 
-          <!-- ✅ badge reaction มุมขวาล่าง -->
+          <!-- ✅ reaction มุมขวาล่าง -->
           {% if comment.reaction %}
-            <span class="badge bg-warning text-dark position-absolute bottom-0 end-0 m-2">
-              👍 {{ comment.reaction }}
-            </span>
+            <div class="position-absolute bottom-0 end-0 m-2 d-flex align-items-center" style="font-size: 12px; color: #333;">
+  <img src="/static/assets/img/icons/like.png" alt="thumbs up" style="width: 14px; height: 14px; margin-right: 4px;">{{ comment.reaction }}
+</div>
           {% endif %}
 
         </div>
@@ -1045,23 +1044,23 @@
               {% if comment.sentiment == "Positive" %}bg-success
               {% elif comment.sentiment == "neutral" %}bg-secondary
               {% elif comment.sentiment == "negative" %}bg-danger
-              {% else %}bg-light text-dark{% endif %}">
+              {% else %}bg-light text-dark{% endif %}"
+              style="font-size: 11px; padding: 4px 6px;">
               {{ comment.sentiment }}
             </span>
           {% endif %}
 
           <div class="d-flex align-items-start mb-1">
-  {% if comment.profile_img_url %}
-    <img src="{{ comment.profile_img_url }}" class="rounded-circle me-2" width="36" height="36" alt="avatar">
-  {% endif %}
-  <div style="flex:1;">
-    <div class="fw-semibold text-dark" style="font-size: 14px;">{{ comment.author }}</div>
-    <div class="text-muted" style="font-size: 13px; white-space: normal; word-break: break-word; padding-right: 60px;">
-      {{ comment.content }}
-    </div>
-  </div>
-</div>
-
+            {% if comment.profile_img_url %}
+              <img src="{{ comment.profile_img_url }}" class="rounded-circle me-2" width="36" height="36" alt="avatar">
+            {% endif %}
+            <div style="flex:1;">
+              <div class="fw-semibold text-dark" style="font-size: 14px;">{{ comment.author }}</div>
+              <div class="text-muted" style="font-size: 13px; white-space: normal; word-break: break-word; padding-right: 60px;">
+                {{ comment.content }}
+              </div>
+            </div>
+          </div>
 
           {% if comment.image_url %}
             <img src="{{ comment.image_url }}" class="rounded mb-2" style="max-width: 100%; border-radius: 6px;" alt="comment image">
@@ -1073,11 +1072,11 @@
             </div>
           {% endif %}
 
-          <!-- ✅ badge reaction มุมขวาล่าง -->
+          <!-- ✅ reaction มุมขวาล่าง -->
           {% if comment.reaction %}
-            <span class="badge bg-warning text-dark position-absolute bottom-0 end-0 m-2">
-              👍 {{ comment.reaction }}
-            </span>
+            <div class="position-absolute bottom-0 end-0 m-2 d-flex align-items-center" style="font-size: 12px; color: #333;">
+  <img src="/static/assets/img/icons/like.png" alt="thumbs up" style="width: 14px; height: 14px; margin-right: 4px;">{{ comment.reaction }}
+</div>
           {% endif %}
 
         </div>
@@ -1092,6 +1091,7 @@
   {% else %}
     <div class="alert alert-warning mt-4">ยังไม่มีข้อมูลคอมเมนต์</div>
   {% endif %}
+
 
 {% elif dashboard.dashboard_type == "activity" %}
   <!-- 🔷 ACTIVITY DASHBOARD -->

@@ -19,7 +19,7 @@ from PageInfo.models import FacebookComment
 from PageInfo.ai_sentiment_analyzer import analyze_sentiment_and_category
 
 # 🔧 ตั้งชื่อ dashboard ที่ต้องการ
-target_dashboard_name = "ivy ของดีบอกต่อ2"
+target_dashboard_name = "Vixol Oxy รีวิวตัวแม่ถูกและดี by Sp Saypan"
 
 if target_dashboard_name:
     comments = FacebookComment.objects.filter(

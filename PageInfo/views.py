@@ -38,6 +38,20 @@ import re
 import os
 import json  # 👈 ต้อง import นี้
 
+def clean_reaction(value):
+    """
+    คืนค่า reaction เป็น integer
+    ถ้าเป็น string เช่น 'ถูกใจ 5' จะดึงเลข 5
+    ถ้าไม่มีตัวเลข จะคืน 0
+    """
+    if not value:
+        return 0
+    if isinstance(value, int):
+        return value
+    value_str = str(value)
+    digits = ''.join(c for c in value_str if c.isdigit())
+    return int(digits) if digits else 0
+
 async def run_activity_pipeline(post_url, dashboard):
     # ✅ ดึงคอมเมนต์
     comment_result = await run_fb_comment_scraper(post_url)
@@ -210,10 +224,27 @@ def comment_dashboard_view(request):
         seeding_comments = [c for c in all_comments if is_seeding(c.author)]
         organic_comments = [c for c in all_comments if not is_seeding(c.author)]
 
+        # ✅ แปลงเป็น list เพื่อให้ sorted() ทำงานแน่นอน
+        seeding_comments = list(seeding_comments)
+        organic_comments = list(organic_comments)
+
+        # ✅ เรียงจาก reaction มาก -> น้อย
+        seeding_comments = sorted(
+            seeding_comments,
+            key=lambda x: clean_reaction(x.reaction),
+            reverse=True
+        )
+        organic_comments = sorted(
+            organic_comments,
+            key=lambda x: clean_reaction(x.reaction),
+            reverse=True
+        )
+
         context.update({
             "seeding_comments": seeding_comments,
             "organic_comments": organic_comments,
         })
+
 
     elif dashboard.dashboard_type == "activity":
         liked_comments = [c for c in all_comments if c.like_status == "ถูกใจแล้ว"]
