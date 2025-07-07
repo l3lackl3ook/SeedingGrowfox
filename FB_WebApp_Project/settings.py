@@ -18,11 +18,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-
-# 🔒 หากไม่มีค่า ให้ raise error
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not set in environment variables")
+    print("Warning: OPENAI_API_KEY not set. Some features may not work.")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
