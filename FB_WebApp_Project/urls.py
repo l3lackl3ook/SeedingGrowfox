@@ -28,6 +28,7 @@ urlpatterns = [
     path('add-comment-url/', views.add_comment_url, name='add_comment_url'),
     path("comment-dashboard/", views.comment_dashboard_view, name="comment_dashboard"),
     path('add-activity-dashboard/', views.add_activity_dashboard, name='add_activity_dashboard'),
+    path('edit-comment/<int:comment_id>/', views.edit_comment, name='edit_comment'),
 ]
 
 # ✅ เพิ่มตรงนี้เพื่อให้ static files โหลดได้ตอน DEBUG = True

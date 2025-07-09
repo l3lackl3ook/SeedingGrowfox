@@ -150,7 +150,26 @@ class FBCommentScraper:
             content_el = div.locator('div[dir="auto"]').first
             content_html = (await content_el.inner_html()).strip() if await content_el.count() else ''
             soup = BeautifulSoup(content_html, 'html.parser')
-            content = soup.get_text(separator=' ', strip=True)
+
+            content_parts = []
+            seen = set()
+            for el in soup.descendants:
+                if el.name == 'img' and el.has_attr('alt'):
+                    emoji = el['alt'].strip()
+                    if emoji not in seen:
+                        content_parts.append(emoji)
+                        seen.add(emoji)
+                elif el.name == 'a':
+                    text = el.get_text(strip=True)
+                    if text and text not in seen:
+                        content_parts.append(text)
+                        seen.add(text)
+                elif el.string:
+                    text = el.string.strip()
+                    if text and text not in seen:
+                        content_parts.append(text)
+                        seen.add(text)
+            content = ' '.join(content_parts)
 
             image_url = None
             try:

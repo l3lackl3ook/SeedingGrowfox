@@ -10,8 +10,11 @@ from .seeding_utils import is_seeding
 from urllib.parse import unquote
 from urllib.parse import urlparse
 from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
+from django.forms import modelformset_factory
+from .forms import FacebookCommentForm  # ✅ import form ที่คุณสร้างแล้ว
 from .forms import CommentDashboardForm  # ✅ อย่าลืม import
 from .models import FacebookComment, FBCommentDashboard
 from .models import PageGroup, PageInfo, FacebookPost, FollowerHistory
@@ -38,6 +41,19 @@ import re
 import os
 import json  # 👈 ต้อง import นี้
 
+@require_POST
+def edit_comment(request, comment_id):
+    comment = get_object_or_404(FacebookComment, id=comment_id)
+
+    comment.content = request.POST.get("content")
+    comment.sentiment = request.POST.get("sentiment")
+    comment.category = request.POST.get("category")
+    comment.keyword_group = request.POST.get("keyword_group")
+    comment.reason = request.POST.get("reason")
+    comment.save()
+
+    # 🔁 redirect กลับไปหน้าเดิม
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 def clean_reaction(value):
     """
     คืนค่า reaction เป็น integer
@@ -149,6 +165,25 @@ def comment_dashboard_view(request):
     all_comments = FacebookComment.objects.filter(post_url=target_post_url).exclude(
         timestamp_text__isnull=True).exclude(timestamp_text="").order_by("-created_at")
 
+    # ✅ ถ้า POST -> update ค่า
+    if request.method == "POST":
+        for comment in all_comments:
+            cid = str(comment.id)
+            new_content = request.POST.get(f"content_{cid}")
+            new_sentiment = request.POST.get(f"sentiment_{cid}")
+            new_keyword_group = request.POST.get(f"keyword_group_{cid}")
+            new_category = request.POST.get(f"category_{cid}")
+
+            # ✅ อัปเดตค่าใน db
+            comment.content = new_content
+            comment.sentiment = new_sentiment
+            comment.keyword_group = new_keyword_group
+            comment.category = new_category
+            comment.save()
+
+        # ✅ หลัง save redirect กลับเพื่อ refresh หน้าและป้องกันการ resubmit
+        return redirect(request.path + f"?post_url={target_post_url}")
+
     activity_comments = all_comments
 
     # ✅ นับจำนวน sentiment
@@ -167,7 +202,6 @@ def comment_dashboard_view(request):
         'profile_img_url', 'author', 'content', 'image_url', 'sentiment', 'reason'
     ))
 
-    # ✅ รวมเป็น dict เพื่อใช้ใน template
     comments_by_sentiment = {
         'positive': positive_comments,
         'neutral': neutral_comments,
@@ -184,7 +218,7 @@ def comment_dashboard_view(request):
     keyword_group_labels = [item['keyword_group'] if item['keyword_group'] else 'ไม่ระบุ' for item in keyword_group_qs]
     keyword_group_counts = [item['count'] for item in keyword_group_qs]
 
-    # ✅ ดึง comments by category
+    # ✅ comments by category
     category_comments = {}
     for cat in category_labels:
         comments = all_comments.filter(category=cat).values(
@@ -192,7 +226,7 @@ def comment_dashboard_view(request):
         )
         category_comments[cat] = list(comments)
 
-    # ✅ ดึง comments by keyword_group
+    # ✅ comments by keyword_group
     keyword_group_comments = {}
     for kg in keyword_group_labels:
         comments = all_comments.filter(keyword_group=kg).values(
@@ -200,7 +234,7 @@ def comment_dashboard_view(request):
         )
         keyword_group_comments[kg] = list(comments)
 
-    # ✅ prepare context base
+    # ✅ prepare context
     context = {
         "dashboard": dashboard,
         "decoded_url": target_post_url,
@@ -213,38 +247,21 @@ def comment_dashboard_view(request):
         "category_counts": json.dumps(category_counts),
         "keyword_group_labels": json.dumps(keyword_group_labels, ensure_ascii=False),
         "keyword_group_counts": json.dumps(keyword_group_counts),
-    }
-
-    context.update({
         "category_comments_json": json.dumps(category_comments, ensure_ascii=False),
         "keyword_group_comments_json": json.dumps(keyword_group_comments, ensure_ascii=False),
-    })
+    }
 
     if dashboard.dashboard_type == "seeding":
         seeding_comments = [c for c in all_comments if is_seeding(c.author)]
         organic_comments = [c for c in all_comments if not is_seeding(c.author)]
 
-        # ✅ แปลงเป็น list เพื่อให้ sorted() ทำงานแน่นอน
-        seeding_comments = list(seeding_comments)
-        organic_comments = list(organic_comments)
-
-        # ✅ เรียงจาก reaction มาก -> น้อย
-        seeding_comments = sorted(
-            seeding_comments,
-            key=lambda x: clean_reaction(x.reaction),
-            reverse=True
-        )
-        organic_comments = sorted(
-            organic_comments,
-            key=lambda x: clean_reaction(x.reaction),
-            reverse=True
-        )
+        seeding_comments = sorted(seeding_comments, key=lambda x: clean_reaction(x.reaction), reverse=True)
+        organic_comments = sorted(organic_comments, key=lambda x: clean_reaction(x.reaction), reverse=True)
 
         context.update({
             "seeding_comments": seeding_comments,
             "organic_comments": organic_comments,
         })
-
 
     elif dashboard.dashboard_type == "activity":
         liked_comments = [c for c in all_comments if c.like_status == "ถูกใจแล้ว"]
