@@ -214,7 +214,7 @@ def comment_dashboard_view(request):
     category_counts = [item['count'] for item in category_qs]
 
     # ✅ นับจำนวน keyword_group
-    keyword_group_qs = all_comments.values('keyword_group').annotate(count=Count('keyword_group')).order_by('-count')
+    keyword_group_qs = all_comments.values('keyword_group').annotate(count=Count('keyword_group')).order_by('-count')[:10]
     keyword_group_labels = [item['keyword_group'] if item['keyword_group'] else 'ไม่ระบุ' for item in keyword_group_qs]
     keyword_group_counts = [item['count'] for item in keyword_group_qs]
 
