@@ -80,6 +80,7 @@
     <!-- ✅ แก้ href จาก index.html เป็น {% url 'index' %} -->
     <a href="{% url 'index' %}" class="app-brand-link">
       <img src="{% static 'assets/img/branding/growfox.webp' %}" alt="Growfox Logo" class="logo-img" />
+      <img src="{% static 'assets/img/favicon/gavicon.jpg' %}" alt="Fox Icon" class="logo-img logo-icon d-none" />
     </a>
 
     <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-white text-large ms-auto">
@@ -98,11 +99,15 @@
 
   <ul class="menu-inner py-1">
 
+
             <!-- Add Group Menu Bar -->
+            <li class="menu-header small mt-5">
+              <span class="menu-header-text" data-i18n="Apps & Pages">Pages &amp; Posts</span>
+            </li>
 <li class="menu-item">
   <a href="javascript:void(0);" class="menu-link menu-toggle">
     <i class="menu-icon icon-base ri ri-home-smile-line"></i>
-    <div data-i18n="All Group">All Group</div>
+    <div data-i18n="Page Campaigns">Page Campaigns</div>
     <div class="badge badge-center text-bg-danger rounded-pill ms-auto">{{ page_groups_count }}</div>
   </a>
   <ul class="menu-sub">
@@ -115,19 +120,29 @@
     {% endfor %}
   </ul>
 </li>
-
-
-<!-- Add Group For Page Button (ลิงก์ไปยัง create_group view) -->
+<!-- 🔶 Post Campaign Menu -->
 <li class="menu-item">
-  <a href="{% url 'create_group' %}" class="menu-link custom-add-group">
-    <i class="menu-icon tf-icons ri ri-add-line"></i>
-    <div data-i18n="Add Group For Page">Add Group For Page</div>
+  <a href="javascript:void(0);" class="menu-link menu-toggle">
+    <i class="menu-icon icon-base ri ri-article-line"></i>
+    <div data-i18n="Post Campaigns">Post Campaigns</div>
+    <div class="badge badge-center text-bg-danger rounded-pill ms-auto">{{ comment_campaign_groups|length }}</div>
   </a>
+  <ul class="menu-sub">
+    {% for group in comment_campaign_groups %}
+      <li class="menu-item">
+        <!-- ใช้ campaign_group.group_name สำหรับชื่อแคมเปญ -->
+               <a href="{% url 'posts_campaign' group_name=group.group_name %}" class="menu-link">
+          <div>{{ group.group_name }}</div> <!-- ใช้ group_name แทน campaign_name -->
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
 </li>
+
 
             <!-- Apps & Pages -->
             <li class="menu-header small mt-5">
-              <span class="menu-header-text" data-i18n="Apps & Pages">Apps &amp; Pages</span>
+              <span class="menu-header-text" data-i18n="Apps & Ads">Apps &amp; Ads</span>
             </li>
         <li class="menu-item">
         <a href="/chat-ai.html" class="menu-link">
@@ -138,30 +153,47 @@
 
             <!-- Page Overview Menu Bar -->
 
-            <li class="menu-item active open">
+            <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon icon-base ri ri-bill-line"></i>
                 <div data-i18n="Page">Page</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item active">
+                <li class="menu-item">
                   <a href="app-academy-dashboard.html" class="menu-link">
-                    <div data-i18n="Overview">Overview</div>
+                    <div data-i18n="Campaign Overview">Campaign Overview</div>
                   </a>
                 </li>
                 <li class="menu-item">
                   <a href="app-academy-course.html" class="menu-link">
-                    <div data-i18n="Post">Post</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="app-academy-course-details.html" class="menu-link">
-                    <div data-i18n="Comments">Comments</div>
+                    <div data-i18n="Page Overview">Page Overview</div>
                   </a>
                 </li>
               </ul>
             </li>
             <!-- Page Overview end -->
+            <!-- Post Overview Menu Bar -->
+
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon icon-base ri ri-file-list-line"></i>
+                <div data-i18n="Posts">Posts</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="app-academy-dashboard.html" class="menu-link">
+                    <div data-i18n="Campaign Overview">Campaign Overview</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="app-academy-course.html" class="menu-link">
+                    <div data-i18n="Page Overview">Post Overview</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <!-- Post Overview end -->
+
             <!-- Ads Campaign Menu Bar -->
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -185,30 +217,35 @@
                 </li>
               </ul>
             </li>
-               <!-- Setting Menu Bar -->
-            <li class="menu-header small mt-5">
-              <span class="menu-header-text" data-i18n="Setting">Setting</span>
-            </li>
-                        <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-user-line"></i>
-                <div data-i18n="Users">Users</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="app-ecommerce-dashboard.html" class="menu-link">
-                    <div data-i18n="hello@growfox.co">hello@growfox.co</div>
-                  </a>
-              </ul>
-            </li>
+
+  <!-- ⚙️ Setting & User moved to bottom -->
+  <div class="mt-auto">
+    <ul class="menu-inner py-1">
+      <li class="menu-header small mt-5">
+        <span class="menu-header-text">Setting</span>
+      </li>
+      <li class="menu-item">
+        <a href="javascript:void(0);" class="menu-link menu-toggle">
+          <i class="menu-icon ri ri-user-line"></i>
+          <div data-i18n="Users">Users</div>
+        </a>
+        <ul class="menu-sub">
           <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-settings-3-line"></i>
-                <div data-i18n="Setting">Setting</div>
+            <a href="app-ecommerce-dashboard.html" class="menu-link">
+              <div data-i18n="hello@growfox.co">hello@growfox.co</div>
+            </a>
           </li>
-              </ul>
-            </li>
-        </aside>
+        </ul>
+      </li>
+      <li class="menu-item">
+        <a href="javascript:void(0);" class="menu-link menu-toggle">
+          <i class="menu-icon ri ri-settings-3-line"></i>
+          <div data-i18n="Setting">Setting</div>
+        </a>
+      </li>
+    </ul>
+  </div>
+</aside>
 
         <div class="menu-mobile-toggler d-xl-none rounded-1">
           <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">

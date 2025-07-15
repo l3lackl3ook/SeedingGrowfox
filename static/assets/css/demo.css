@@ -24,7 +24,11 @@
 /* ! For .layout-navbar-fixed added fix padding top to .layout-page */
 /* Default navbar */
 .layout-navbar-fixed .layout-wrapper:not(.layout-without-menu) .layout-page {
-  padding-top: 64px !important;
+  padding-top: 30 !important;
+}
+
+.layout-navbar {
+  display: none !important;
 }
 
 /* Navbar page z-index issue solution */

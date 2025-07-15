@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError
 from django.forms import modelformset_factory
 from .forms import FacebookCommentForm  # ✅ import form ที่คุณสร้างแล้ว
 from .forms import CommentDashboardForm  # ✅ อย่าลืม import
-from .models import FacebookComment, FBCommentDashboard
+from .models import FacebookComment, FBCommentDashboard, CommentCampaignGroup
 from .models import PageGroup, PageInfo, FacebookPost, FollowerHistory
 from .forms import PageGroupForm, PageURLForm, CommentDashboardForm
 from .fb_comment_info import run_fb_comment_scraper
@@ -33,6 +33,7 @@ from .fb_comment import run_fb_comment_scraper as run_activity_comment_scraper
 from .fb_like import run_fb_like_scraper
 from .fb_share import run_fb_share_scraper
 from .fb_reel import FBReelScraperAsync
+from .fb_live import FBLiveScraperAsync
 from collections import Counter
 from collections import defaultdict
 import asyncio
@@ -40,6 +41,100 @@ import calendar
 import re
 import os
 import json  # 👈 ต้อง import นี้
+
+def page_campaign_dashboard(request):
+    if request.method == 'POST':
+        form = PageGroupForm(request.POST)
+        if form.is_valid():
+            form.save()  # บันทึกกลุ่มใหม่
+            return redirect('index')  # ไปที่หน้า index หรือหน้าอื่นที่ต้องการ
+    else:
+        form = PageGroupForm()  # กรณี GET ให้แสดงฟอร์มเปล่า
+    return render(request, 'index.html', {'form': form})  # ส่งฟอร์มไปยังเทมเพลต
+
+def posts_campaign(request, group_name):
+    try:
+        # หา CommentCampaignGroup ตาม group_name
+        campaign_group = CommentCampaignGroup.objects.get(group_name=group_name)
+    except CommentCampaignGroup.DoesNotExist:
+        return HttpResponse("❌ ไม่พบแคมเปญนี้", status=404)
+
+    # ดึงข้อมูล dashboard ที่เกี่ยวข้อง
+    comment_dashboards = FBCommentDashboard.objects.filter(campaign_group=campaign_group)
+
+    # ส่งข้อมูลไปยังเทมเพลต
+    return render(request, 'PageInfo/posts_campaign.html', {
+        'campaign_group': campaign_group,
+        'comment_dashboards': comment_dashboards
+    })
+
+def comment_campaign_detail(request, pk):
+    campaign = get_object_or_404(CommentCampaignGroup, pk=pk)
+
+    return render(request, 'PageInfo/comment_campaign_detail.html', {
+        'campaign': campaign
+    })
+
+def comment_dashboard_detail(request, dashboard_id):
+    # ดึงข้อมูล dashboard โดยใช้ id ที่ได้รับจาก URL
+    dashboard = get_object_or_404(FBCommentDashboard, id=dashboard_id)
+
+    # ดึงข้อมูลคอมเมนต์ที่เกี่ยวข้องกับ dashboard_id
+    comments = FacebookComment.objects.filter(dashboard=dashboard)
+
+    # นับจำนวน sentiment สำหรับแสดงผลในกราฟ
+    positive_count = comments.filter(sentiment="Positive").count()
+    neutral_count = comments.filter(sentiment="neutral").count()
+    negative_count = comments.filter(sentiment="negative").count()
+
+    # เตรียมข้อมูลให้กับกราฟ
+    comments_by_sentiment = {
+        'positive': list(comments.filter(sentiment="Positive").values('author', 'content', 'sentiment')),
+        'neutral': list(comments.filter(sentiment="neutral").values('author', 'content', 'sentiment')),
+        'negative': list(comments.filter(sentiment="negative").values('author', 'content', 'sentiment')),
+    }
+
+    # เตรียมข้อมูลที่จำเป็นในการแสดงในกราฟ
+    category_qs = comments.values('category').annotate(count=Count('category')).order_by('-count')
+    category_labels = [item['category'] if item['category'] else 'ไม่ระบุ' for item in category_qs]
+    category_counts = [item['count'] for item in category_qs]
+
+    keyword_group_qs = comments.values('keyword_group').annotate(count=Count('keyword_group')).order_by('-count')[:10]
+    keyword_group_labels = [item['keyword_group'] if item['keyword_group'] else 'ไม่ระบุ' for item in keyword_group_qs]
+    keyword_group_counts = [item['count'] for item in keyword_group_qs]
+
+    # กรองคอมเมนต์ seeding และ organic
+    seeding_comments = [c for c in comments if is_seeding(c.author)]
+    organic_comments = [c for c in comments if not is_seeding(c.author)]
+
+    # คำนวณแยกคอมเมนต์ประเภท Seeding และ Organic
+    seeding_comments = sorted(seeding_comments, key=lambda x: x.created_at, reverse=True)
+    organic_comments = sorted(organic_comments, key=lambda x: x.created_at, reverse=True)
+
+    # ส่งข้อมูลไปยังเทมเพลต
+    context = {
+        "dashboard": dashboard,
+        "comments": comments,
+        "positive_count": positive_count,
+        "neutral_count": neutral_count,
+        "negative_count": negative_count,
+        "comments_by_sentiment_json": json.dumps(comments_by_sentiment, ensure_ascii=False),
+        "category_labels": json.dumps(category_labels, ensure_ascii=False),
+        "category_counts": json.dumps(category_counts),
+        "keyword_group_labels": json.dumps(keyword_group_labels, ensure_ascii=False),
+        "keyword_group_counts": json.dumps(keyword_group_counts),
+        "seeding_comments": seeding_comments,
+        "organic_comments": organic_comments,
+    }
+
+    return render(request, 'PageInfo/comment_dashboard.html', context)
+
+def create_comment_campaign(request):
+    if request.method == 'POST':
+        group_name = request.POST.get('group_name')
+        if group_name:
+            CommentCampaignGroup.objects.create(group_name=group_name)
+    return redirect('index')
 
 @require_POST
 def edit_comment(request, comment_id):
@@ -54,6 +149,7 @@ def edit_comment(request, comment_id):
 
     # 🔁 redirect กลับไปหน้าเดิม
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
 def clean_reaction(value):
     """
     คืนค่า reaction เป็น integer
@@ -275,18 +371,31 @@ def comment_dashboard_view(request):
 
     return render(request, "PageInfo/comment_dashboard.html", context)
 
-
-
 def add_comment_url(request):
+    # รับค่าจาก request POST หรือ GET
     if request.method == "POST":
         link_url = request.POST.get("post_url")
         dashboard_name = request.POST.get("dashboard_name") or extract_post_id(link_url)
         dashboard_type = request.POST.get("dashboard_type") or "seeding"
 
+        # รับ campaign_group_id จากฟอร์ม
+        campaign_group_id = request.POST.get("post_campaign_id")
+
+        # ตรวจสอบว่า campaign_group_id ได้ถูกส่งมาหรือไม่
+        if not campaign_group_id:
+            return HttpResponse("❌ ไม่พบ campaign_group_id", status=400)
+
+        # ดึงข้อมูล CommentCampaignGroup จาก ID ที่ได้รับ
+        try:
+            campaign_group = CommentCampaignGroup.objects.get(id=campaign_group_id)
+        except CommentCampaignGroup.DoesNotExist:
+            return HttpResponse("❌ ไม่พบ campaign_group", status=404)
+
     elif request.method == "GET":
         link_url = request.GET.get("url")
         dashboard_name = extract_post_id(link_url) if link_url else None
         dashboard_type = request.GET.get("dashboard_type") or "seeding"
+        campaign_group = None  # ในกรณีนี้ไม่มี campaign_group_id
 
     else:
         return redirect('index')
@@ -294,6 +403,7 @@ def add_comment_url(request):
     if not link_url:
         return HttpResponse("❌ ไม่พบ URL", status=400)
 
+    # ตรวจสอบ URL ให้ถูกต้อง
     validate = URLValidator()
     try:
         validate(link_url)
@@ -302,15 +412,16 @@ def add_comment_url(request):
 
     normalized_link_url = normalize_url(link_url)
 
-    # ✅ สร้าง dashboard ก่อน
+    # สร้าง dashboard
     dashboard = FBCommentDashboard.objects.create(
-        link_url=normalized_link_url,
+        post_id=normalized_link_url,  # ใช้ post_id แทน link_url
         dashboard_name=dashboard_name[:255] if dashboard_name else "",
         dashboard_type=dashboard_type,
+        campaign_group=campaign_group  # เชื่อมโยงกับ campaign_group
     )
 
+    # ถ้าเป็น dashboard_type = "seeding"
     if dashboard_type == "seeding":
-        # ✅ รัน seeding comment scraper
         result = asyncio.run(run_seeding_comment_scraper(link_url))
         comments = result.get("comments", [])
         screenshot_path = result.get("post_screenshot_path")
@@ -328,18 +439,16 @@ def add_comment_url(request):
                 reply=c.get("reply"),
             )
 
-        # ✅ save screenshot ถ้ามี
         if screenshot_path:
             abs_path = os.path.join("media", screenshot_path)
             if os.path.exists(abs_path):
                 with open(abs_path, "rb") as f:
                     dashboard.screenshot_path.save(os.path.basename(abs_path), File(f), save=True)
 
+    # ถ้าเป็น dashboard_type = "activity"
     elif dashboard_type == "activity":
-        # ✅ รัน activity comment scraper + like + share
         result = asyncio.run(run_activity_comment_scraper(link_url))
-        comments = result.get("comments", [])  # 🔑 แก้ตรงนี้
-
+        comments = result.get("comments", [])
         likes = asyncio.run(run_fb_like_scraper(link_url))
         shares = asyncio.run(run_fb_share_scraper(link_url))
 
@@ -362,9 +471,8 @@ def add_comment_url(request):
                 share_status="แชร์แล้ว" if name in share_names else "ยังไม่แชร์",
             )
 
-    return redirect(f"/comment-dashboard/?post_url={normalized_link_url}")
-
-    return redirect('index')
+    # รีไดเร็กต์ไปยังหน้าแสดงข้อมูลของ campaign_group
+    return redirect(f"/posts-campaign/{campaign_group.id}/")
 
 
 
@@ -411,16 +519,18 @@ def clean_number(value):
     else:
         return 0
 
-async def run_fb_post_video_reel_scraper(url, cookie_path, cutoff_dt):
+async def run_fb_post_video_reel_live_scraper(url, cookie_path, cutoff_dt):
     posts_scraper = FBPostScraperAsync(cookie_file=cookie_path, headless=True, page_url=url, cutoff_dt=cutoff_dt)
     videos_scraper = FBVideoScraperAsync(cookie_file=cookie_path, headless=True, page_url=url, cutoff_dt=cutoff_dt)
     reels_scraper = FBReelScraperAsync(cookie_file=cookie_path, headless=True, page_url=url, cutoff_dt=cutoff_dt)
+    lives_scraper = FBLiveScraperAsync(cookie_file=cookie_path, headless=True, page_url=url, cutoff_dt=cutoff_dt)
 
     posts = await posts_scraper.run()
     videos = await videos_scraper.run()
     reels = await reels_scraper.run()
+    lives = await lives_scraper.run()
 
-    return (posts or []) + (videos or []) + (reels or [])
+    return (posts or []) + (videos or []) + (reels or []) + (lives or [])
 
 
 
@@ -435,64 +545,66 @@ def add_page(request, group_id):
             allowed_fields = {f.name for f in PageInfo._meta.get_fields()}
 
             if platform == 'facebook':
-                    fb_data = FBPageInfo(url)
-                    if 'page_id' in fb_data:
-                        follower_data = PageFollowers(fb_data['page_id'])
-                        if follower_data:
-                            fb_data.update(follower_data)
-                    filtered_data = {k: v for k, v in fb_data.items() if k in allowed_fields}
-                    for key in ['page_likes_count', 'page_followers_count']:
-                        value = filtered_data.get(key)
-                        if isinstance(value, str):
-                            filtered_data[key] = int(value.replace(',', ''))
-                    filtered_data['platform'] = 'facebook'
+                fb_data = FBPageInfo(url)
+                if 'page_id' in fb_data:
+                    follower_data = PageFollowers(fb_data['page_id'])
+                    if follower_data:
+                        fb_data.update(follower_data)
 
-                    # ✅ ดึงโพสต์ + บันทึกโพสต์
-                    page_obj = PageInfo.objects.create(page_group=group, **filtered_data)
+                filtered_data = {k: v for k, v in fb_data.items() if k in allowed_fields}
+                for key in ['page_likes_count', 'page_followers_count']:
+                    value = filtered_data.get(key)
+                    if isinstance(value, str):
+                        filtered_data[key] = int(value.replace(',', ''))
+                filtered_data['platform'] = 'facebook'
 
-                    # ✅ ดึงโพสต์ + บันทึกโพสต์
-                    try:
-                        cutoff_date = datetime.now() - timedelta(days=30)
-                        cookie_path = os.path.join(settings.BASE_DIR, 'PageInfo', 'cookie.json')
+                # ✅ สร้าง PageInfo ก่อน
+                page_obj = PageInfo.objects.create(page_group=group, **filtered_data)
 
-                        posts = asyncio.run(run_fb_post_video_reel_scraper(url, cookie_path, cutoff_date))
+                try:
+                    cutoff_date = datetime.now() - timedelta(days=30)
+                    cookie_path = os.path.join(settings.BASE_DIR, 'PageInfo', 'cookie.json')
+                    posts = asyncio.run(run_fb_post_video_reel_live_scraper(url, cookie_path, cutoff_date))
 
+                    for post in posts or []:
+                        post_type = post.get("post_type", "post")
 
+                        post_url = post.get("video_url") if post_type in ["video", "reel", "live"] else post.get("post_url")
 
-                        for post in posts or []:
-                            # รวมภาพทั้งหมด
-                            post_imgs = (post.get("post_imgs") or []) + (
-                                [post.get("video_thumbnail")] if post.get("video_thumbnail") else [])
+                        post_imgs = (post.get("post_imgs") or []) + (
+                            [post.get("video_thumbnail")] if post.get("video_thumbnail") else [])
 
-                            # ใช้ video_url แทน post_url ถ้าเป็นวิดีโอ
-                            post_url = post.get("video_url") if post.get("post_type") in ["video", "reel"] else post.get("post_url")
+                        # ✅ Fallback เวลา: ใช้ post_timestamp_dt หรือ post_date
+                        post_timestamp_dt = post.get("post_timestamp_dt") or post.get("post_date")
+                        if post_timestamp_dt and timezone.is_naive(post_timestamp_dt):
+                            post_timestamp_dt = timezone.make_aware(post_timestamp_dt)
 
+                        # ✅ สร้างข้อความเวลา หากไม่มี
+                        post_timestamp_text = post.get("post_timestamp_text")
+                        if not post_timestamp_text and post_timestamp_dt:
+                            try:
+                                post_timestamp_text = post_timestamp_dt.strftime("วัน%Aที่ %-d %B %Y เวลา %H:%M น.")
+                            except:
+                                post_timestamp_text = post_timestamp_dt.strftime("วัน%Aที่ %d %B %Y เวลา %H:%M น.")
 
-
-                            # แก้ timezone warning
-                            post_timestamp_dt = post.get("post_timestamp_dt")
-                            if post_timestamp_dt and timezone.is_naive(post_timestamp_dt):
-                                post_timestamp_dt = timezone.make_aware(post_timestamp_dt)
-
-                            FacebookPost.objects.update_or_create(
-                                post_id=post["post_id"],
-                                defaults={
-                                    'page': page_obj,
-                                    'post_url': post_url,
-                                    'post_type': post["post_type"],
-                                    'post_timestamp_dt': post_timestamp_dt,
-                                    'post_timestamp_text': post.get('post_timestamp_text', ""),
-                                    'post_content': post.get('post_content', ""),
-                                    'post_imgs': post_imgs,
-                                    'reactions': post.get('reactions', {}),
-                                    'comment_count': post.get('comment_count', 0),
-                                    'share_count': post.get('share_count', 0),
-                                    'watch_count': post.get('watch_count'),
-                                }
-                            )
-                    except Exception as e:
-                        print("❌ Error fetching posts:", e)
-
+                        FacebookPost.objects.update_or_create(
+                            post_id=post["post_id"],
+                            defaults={
+                                'page': page_obj,
+                                'post_url': post_url,
+                                'post_type': post_type,
+                                'post_timestamp_dt': post_timestamp_dt,
+                                'post_timestamp_text': post_timestamp_text or "",
+                                'post_content': post.get('post_content', ""),
+                                'post_imgs': post_imgs,
+                                'reactions': post.get('reactions', {}),
+                                'comment_count': post.get('comment_count', 0),
+                                'share_count': post.get('share_count', 0),
+                                'watch_count': post.get('watch_count'),
+                            }
+                        )
+                except Exception as e:
+                    print("❌ Error fetching posts:", e)
 
             elif platform == 'tiktok':
                 tiktok_data = get_tiktok_info(url)
@@ -678,7 +790,6 @@ def add_page(request, group_id):
 
 
 
-
 def create_group(request):
     if request.method == 'POST':
         form = PageGroupForm(request.POST)
@@ -687,12 +798,19 @@ def create_group(request):
             return redirect('group_detail', group_id=page_group.id)
     else:
         form = PageGroupForm()
-    return render(request, 'PageInfo/create_group.html', {'form': form})
+
+    return render(request, 'index.html', {'form': form})
+
+    # ส่งฟอร์มไปยัง template
+    return render(request, 'PageInfo/index.html', {'form': form})
 
 def group_detail(request, group_id):
     group = get_object_or_404(PageGroup, id=group_id)
     pages = group.pages.all().order_by('-page_followers_count')
     posts = FacebookPost.objects.filter(page__in=pages)
+
+    sidebar = sidebar_context(request)
+
     # 🔟 Top 10 Posts by Engagement
     top10_posts = sorted(
         [p for p in posts if p.post_timestamp_dt],
@@ -882,28 +1000,56 @@ def group_detail(request, group_id):
         'facebook_posts_top10': top10_posts_data,
         "pillar_summary": pillar_summary,
         'posts_by_pillar': posts_by_pillar,
+        'sidebar': sidebar,
     })
-
-
 def index(request):
     page_groups = PageGroup.objects.prefetch_related('pages')
     total_groups = page_groups.count()
 
-    comment_dashboards = FBCommentDashboard.objects.all().order_by('-created_at')
-    form = CommentDashboardForm()  # ✅ เพิ่มตรงนี้ด้วย
+    comment_dashboards = FBCommentDashboard.objects.all()
+    comment_dashboards_by_group = defaultdict(list)
 
+    for dashboard in comment_dashboards:
+        if dashboard.campaign_group:
+            comment_dashboards_by_group[dashboard.campaign_group].append(dashboard)
+
+    # ฟอร์มสำหรับ Page Group
+    form_group = PageGroupForm(request.POST or None)
+
+    # หากมีการส่งฟอร์ม Page Group
+    if form_group.is_valid():
+        form_group.save()
+        return redirect('index')
+
+    # ดึงข้อมูลกลุ่มแคมเปญ
+    comment_campaign_groups = CommentCampaignGroup.objects.order_by('-created_at')
+
+    # ส่งข้อมูลทั้งหมดไปยังเทมเพลต
     return render(request, 'PageInfo/index.html', {
         'page_groups': page_groups,
         'total_groups': total_groups,
-        'comment_dashboards': comment_dashboards,
-        'form': form  # ✅ ส่ง form ไปด้วย
+        'comment_dashboards_by_group': comment_dashboards_by_group,
+        'comment_campaign_groups': comment_campaign_groups,
+        'form_group': form_group,  # ฟอร์มสำหรับ Page Group
     })
-
-
 
 def sidebar_context(request):
     page_groups = PageGroup.objects.all()
-    return {'page_groups_sidebar': page_groups, 'page_groups_count': page_groups.count()}
+    # ดึงข้อมูลแคมเปญพร้อมกับกลุ่ม
+    post_campaigns_sidebar = FBCommentDashboard.objects.select_related('campaign_group').order_by('-created_at')[:10]
+
+    # ดึง comment_campaign_groups เพื่อนำไปแสดงใน sidebar
+    comment_campaign_groups = CommentCampaignGroup.objects.all()
+
+    return {
+        'page_groups_sidebar': page_groups,
+        'page_groups_count': page_groups.count(),
+        'post_campaigns_sidebar': post_campaigns_sidebar,  # ใช้ข้อมูลที่ดึงมาในเมนูบาร์
+        'post_campaigns_count': post_campaigns_sidebar.count(),  # จำนวนแคมเปญทั้งหมด
+        'comment_campaign_groups': comment_campaign_groups  # ส่งกลุ่มแคมเปญไปยังเมนูข้าง
+    }
+
+
 
 def pageview(request, page_id):
     page = get_object_or_404(PageInfo, id=page_id)
@@ -998,7 +1144,8 @@ def pageview(request, page_id):
                 "content": (post.post_content[:30] + '...') if post.post_content else "",
                 "page_name": page.page_name,
                 "timestamp_text": post.post_timestamp_text,
-                "img": post.post_imgs[0] if post.post_imgs else None,
+                "img": post.post_imgs[0] if isinstance(post.post_imgs, list) and len(post.post_imgs) > 0 else None,
+                # ตรวจสอบว่า post_imgs เป็น list
             })
 
             # ✅ รวมข้อมูล bubble chart

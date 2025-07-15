@@ -1,8 +1,7 @@
 from django import forms
-from .models import PageGroup
-from .models import FBCommentDashboard
-from .models import FacebookComment
+from .models import PageGroup, FBCommentDashboard, FacebookComment
 
+# ฟอร์มสำหรับกรอกความคิดเห็นของ Facebook
 class FacebookCommentForm(forms.ModelForm):
     class Meta:
         model = FacebookComment
@@ -13,9 +12,9 @@ class FacebookCommentForm(forms.ModelForm):
             'reason': forms.TextInput(attrs={'class': 'form-control'}),
             'keyword_group': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.TextInput(attrs={'class': 'form-control'}),
-            # เพิ่ม widgets ให้ field อื่นๆ ถ้าต้องการ
         }
 
+# ฟอร์มสำหรับกรอก URL ของ Page
 class PageURLForm(forms.Form):
     PLATFORM_CHOICES = [
         ('facebook', 'Facebook'),
@@ -26,20 +25,16 @@ class PageURLForm(forms.Form):
     ]
     platform = forms.ChoiceField(
         choices=PLATFORM_CHOICES,
-        widget=forms.Select(attrs={
-            'class': 'form-control form-control-lg',
-        }),
+        widget=forms.Select(attrs={'class': 'form-control form-control-lg'}),
         required=True,  # บังคับเลือก platform
         label="Platform"
     )
     url = forms.URLField(
         label="Page URL",
-        widget=forms.URLInput(attrs={
-            'class': 'form-control form-control-lg',
-            'placeholder': 'Input URL Page'
-        })
+        widget=forms.URLInput(attrs={'class': 'form-control form-control-lg', 'placeholder': 'Input URL Page'})
     )
 
+# ฟอร์มสำหรับสร้างกลุ่มเพจใหม่
 class PageGroupForm(forms.ModelForm):
     class Meta:
         model = PageGroup
@@ -51,7 +46,9 @@ class PageGroupForm(forms.ModelForm):
             }),
         }
 
+# ฟอร์มสำหรับ Dashboard ของคอมเมนต์
 class CommentDashboardForm(forms.ModelForm):
     class Meta:
         model = FBCommentDashboard
-        fields = ['dashboard_name', 'link_url']
+        fields = ['dashboard_name', 'post_id']
+

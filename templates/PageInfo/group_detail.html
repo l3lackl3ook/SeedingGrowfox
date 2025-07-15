@@ -23,6 +23,7 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'assets/img/favicon/gavicon.jpg' %}?v=3" />
 
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -58,7 +59,6 @@
     <!-- Helpers -->
     <script src="{% static 'assets/vendor/js/helpers.js' %}"></script>
     <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
-    <script src="{% static 'js/materialize.min.js' %}"></script>
 
     <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js. -->
     <script src="{% static 'assets/vendor/js/template-customizer.js' %}"></script>
@@ -71,7 +71,6 @@
   </head>
 
   <body>
-
     <!-- Layout wrapper -->
     <div class="layout-wrapper layout-content-navbar">
       <div class="layout-container">
@@ -81,6 +80,7 @@
     <!-- ✅ แก้ href จาก index.html เป็น {% url 'index' %} -->
     <a href="{% url 'index' %}" class="app-brand-link">
       <img src="{% static 'assets/img/branding/growfox.webp' %}" alt="Growfox Logo" class="logo-img" />
+      <img src="{% static 'assets/img/favicon/gavicon.jpg' %}" alt="Fox Icon" class="logo-img logo-icon d-none" />
     </a>
 
     <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-white text-large ms-auto">
@@ -99,11 +99,15 @@
 
   <ul class="menu-inner py-1">
 
+
             <!-- Add Group Menu Bar -->
-<li class="menu-item">
+            <li class="menu-header small mt-5">
+              <span class="menu-header-text" data-i18n="Apps & Pages">Pages &amp; Posts</span>
+            </li>
+<li class="menu-item active open">
   <a href="javascript:void(0);" class="menu-link menu-toggle">
-    <i class="menu-icon icon-base ri ri-home-smile-line"></i>
-    <div data-i18n="All Group">All Group</div>
+    <i class="menu-icon icon-base ri ri-numbers-line"></i>
+    <div data-i18n="Page Campaigns">Page Campaigns</div>
     <div class="badge badge-center text-bg-danger rounded-pill ms-auto">{{ page_groups_count }}</div>
   </a>
   <ul class="menu-sub">
@@ -116,100 +120,53 @@
     {% endfor %}
   </ul>
 </li>
-
-
-<!-- Add Group For Page Button (ลิงก์ไปยัง create_group view) -->
-<li class="menu-item">
-  <a href="{% url 'create_group' %}" class="menu-link custom-add-group">
-    <i class="menu-icon tf-icons ri ri-add-line"></i>
-    <div data-i18n="Add Group For Page">Add Group For Page</div>
+<!-- 🔶 Post Campaign Menu -->
+<li class="menu-item open">
+  <a href="javascript:void(0);" class="menu-link menu-toggle">
+    <i class="menu-icon icon-base ri ri-article-line"></i>
+    <div data-i18n="Post Campaigns">Post Campaigns</div>
+    <div class="badge badge-center text-bg-danger rounded-pill ms-auto">{{ comment_campaign_groups|length }}</div>
   </a>
+  <ul class="menu-sub">
+    {% for group in comment_campaign_groups %}
+      <li class="menu-item">
+        <!-- ใช้ campaign_group.group_name สำหรับชื่อแคมเปญ -->
+        <a href="{% url 'posts_campaign' group_name=group.group_name %}" class="menu-link">
+          <div>{{ group.group_name }}</div> <!-- ใช้ group_name แทน campaign_name -->
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
 </li>
 
-            <!-- Apps & Pages -->
-            <li class="menu-header small mt-5">
-              <span class="menu-header-text" data-i18n="Apps & Pages">Apps &amp; Pages</span>
-            </li>
-        <li class="menu-item">
-        <a href="/chat-ai.html" class="menu-link">
-        <i class="menu-icon icon-base ri ri-chat-3-line"></i>
-        <div data-i18n="Chat with AI">Chat with AI</div>
+  <!-- ⚙️ Setting & User moved to bottom -->
+  <div class="mt-auto">
+    <ul class="menu-inner py-1">
+      <li class="menu-header small mt-5">
+        <span class="menu-header-text">Setting</span>
+      </li>
+      <li class="menu-item">
+        <a href="javascript:void(0);" class="menu-link menu-toggle">
+          <i class="menu-icon ri ri-user-line"></i>
+          <div data-i18n="Users">Users</div>
         </a>
-        </li>
-
-            <!-- Page Overview Menu Bar -->
-
-            <li class="menu-item active open">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-bill-line"></i>
-                <div data-i18n="Page">Page</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item active">
-                  <a href="app-academy-dashboard.html" class="menu-link">
-                    <div data-i18n="Overview">Overview</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="app-academy-course.html" class="menu-link">
-                    <div data-i18n="Post">Post</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="app-academy-course-details.html" class="menu-link">
-                    <div data-i18n="Comments">Comments</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <!-- Page Overview end -->
-            <!-- Ads Campaign Menu Bar -->
-            <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-bar-chart-2-line"></i>
-                <div data-i18n="Ads Campaign">Ads Campaign</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="charts-apex.html" class="menu-link">
-                    <div data-i18n="Meta">Meta</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="charts-chartjs.html" class="menu-link">
-                    <div data-i18n="Tiktok">Tiktok</div>
-                  </a>
-                </li>   <li class="menu-item">
-                  <a href="charts-chartjs.html" class="menu-link">
-                    <div data-i18n="Google">Google</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
-               <!-- Setting Menu Bar -->
-            <li class="menu-header small mt-5">
-              <span class="menu-header-text" data-i18n="Setting">Setting</span>
-            </li>
-                        <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-user-line"></i>
-                <div data-i18n="Users">Users</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="app-ecommerce-dashboard.html" class="menu-link">
-                    <div data-i18n="hello@growfox.co">hello@growfox.co</div>
-                  </a>
-              </ul>
-            </li>
+        <ul class="menu-sub">
           <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon icon-base ri ri-settings-3-line"></i>
-                <div data-i18n="Setting">Setting</div>
+            <a href="app-ecommerce-dashboard.html" class="menu-link">
+              <div data-i18n="hello@growfox.co">hello@growfox.co</div>
+            </a>
           </li>
-              </ul>
-            </li>
-        </aside>
+        </ul>
+      </li>
+      <li class="menu-item">
+        <a href="javascript:void(0);" class="menu-link menu-toggle">
+          <i class="menu-icon ri ri-settings-3-line"></i>
+          <div data-i18n="Setting">Setting</div>
+        </a>
+      </li>
+    </ul>
+  </div>
+</aside>
 
         <div class="menu-mobile-toggler d-xl-none rounded-1">
           <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">
@@ -596,6 +553,8 @@
               </ul>
             </div>
           </nav>
+
+          <!-- / Navbar -->
 
           <!-- / Navbar -->
 <!-- Content wrapper -->
@@ -1568,10 +1527,11 @@ function openPresentation() {
 
 
 
-            <!-- Footer -->
-<footer class="content-footer footer bg-footer-theme mt-auto py-4 border-top">
+
+            <!-- Footer -->           <!-- Footer -->
+<footer class="content-footer footer bg-footer-theme mt-auto py-4 border-top" style="color: #FF6801;">
   <div class="container-xxl d-flex flex-column flex-md-row align-items-center justify-content-between">
-    <div class="text-muted mb-2 mb-md-0" style="color: #FF6801;">
+    <div class="text-muted mb-2 mb-md-0">
       © <script>document.write(new Date().getFullYear());</script> Growfox Marketing Data Center. All rights reserved.
     </div>
     <div class="footer-links d-flex flex-wrap gap-3">

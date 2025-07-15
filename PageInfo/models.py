@@ -1,7 +1,7 @@
 from django.db import models
 
 class PageGroup(models.Model):
-    group_name = models.CharField(max_length=255, default='Unnamed Group')
+    group_name = models.CharField(max_length=255, default='Test Campaign')
 
     def __str__(self):
         return self.group_name
@@ -48,6 +48,7 @@ class FacebookPost(models.Model):
         ('post', 'Post'),
         ('video', 'Video'),
         ('reel', 'Reel'),
+        ('live', 'Live'),
     )
 
     page = models.ForeignKey('PageInfo', on_delete=models.CASCADE, related_name='facebook_posts')
@@ -56,7 +57,7 @@ class FacebookPost(models.Model):
     post_url = models.URLField(max_length=500, null=True, blank=True)
     post_type = models.CharField(max_length=10, choices=POST_TYPES, default='post')
 
-    post_timestamp_dt = models.DateTimeField()
+    post_timestamp_dt = models.DateTimeField(null=True)
     post_timestamp_text = models.TextField()
 
     post_content = models.TextField(blank=True, null=True)
@@ -108,9 +109,17 @@ class FacebookComment(models.Model):
     def __str__(self):
         return f"{self.author} - {self.content[:30]}"
 
+class CommentCampaignGroup(models.Model):
+    group_name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    post = models.OneToOneField('FacebookPost', on_delete=models.CASCADE, related_name='campaign', null=True, blank=True)
+
+    def __str__(self):
+        return self.group_name
+
+
 
 class FBCommentDashboard(models.Model):
-    # 🔧 ถ้าใน Dashboard ยังต้องใช้ post_id จากระบบอื่น ให้คงไว้
     post_id = models.CharField(max_length=1000, db_index=True, null=True, blank=True)
     dashboard_name = models.CharField(max_length=255, blank=True, null=True)
     dashboard_type = models.CharField(
@@ -118,11 +127,10 @@ class FBCommentDashboard(models.Model):
         choices=[("seeding", "Seeding"), ("activity", "Activity")],
         default="seeding"
     )
-    link_url = models.TextField()  # เปลี่ยนจาก post_url เป็น link_url
     screenshot_path = models.ImageField(upload_to='post_screenshots/', null=True, blank=True)
+    campaign_group = models.ForeignKey(CommentCampaignGroup, related_name='dashboards', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.dashboard_name or self.link_url
-
+        return self.dashboard_name or self.post_id
 
